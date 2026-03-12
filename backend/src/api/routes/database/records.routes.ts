@@ -15,6 +15,14 @@ import { PostgrestProxyService } from '@/services/database/postgrest-proxy.servi
 const router = Router();
 const proxyService = PostgrestProxyService.getInstance();
 
+export function buildPostgrestPath(tableName: string, wildcardPath?: string | string[]): string {
+  const normalizedWildcardPath = Array.isArray(wildcardPath)
+    ? wildcardPath.filter(Boolean).join('/')
+    : (wildcardPath ?? '');
+
+  return normalizedWildcardPath ? `/${tableName}/${normalizedWildcardPath}` : `/${tableName}`;
+}
+
 /**
  * Helper to handle PostgREST proxy errors
  */
@@ -31,8 +39,7 @@ function handleProxyError(error: unknown, res: Response, next: NextFunction) {
  */
 const forwardToPostgrest = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const { tableName } = req.params;
-  const wildcardPath = req.params[0] || '';
-  const path = wildcardPath ? `/${tableName}/${wildcardPath}` : `/${tableName}`;
+  const path = buildPostgrestPath(tableName, req.params.wildcardPath);
 
   try {
     // Validate table name
@@ -119,6 +126,6 @@ const forwardToPostgrest = async (req: AuthRequest, res: Response, next: NextFun
 
 // Forward all database operations to PostgREST
 router.all('/:tableName', forwardToPostgrest);
-router.all('/:tableName/*', forwardToPostgrest);
+router.all('/:tableName/*wildcardPath', forwardToPostgrest);
 
 export { router as databaseRecordsRouter };
